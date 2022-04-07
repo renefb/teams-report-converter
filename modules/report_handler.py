@@ -25,6 +25,8 @@ class TeamsAttendeeEngagementReportHandler:
         self.joined = self.__joined_df
         self.left = self.__left_df
         self.sessions = self.__sessions
+        self.start = self.__event_start
+        self.end = self.__event_end
         
     
     def __load_csv(self):
@@ -84,7 +86,7 @@ class TeamsAttendeeEngagementReportHandler:
     def __pair_sessions(self):
         paired_sess = pd.concat([self.__joined_df, self.__left_df['UTC Left Timestamp']], axis=1)
         paired_sess['Valid Join'] = paired_sess['UTC Joined Timestamp'].apply(lambda x: 1 if x <= self.__event_end else 0)
-        paired_sess['Valid Leaving'] = paired_sess['UTC Left Timestamp'].apply(lambda x: 0 if x >= self.__event_start else 0)
+        paired_sess['Valid Leaving'] = paired_sess['UTC Left Timestamp'].apply(lambda x: 1 if x >= self.__event_start else 0)
         paired_sess['Valid Session'] = paired_sess['Valid Join'] * paired_sess['Valid Leaving']
         
         return paired_sess
