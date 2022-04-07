@@ -17,6 +17,7 @@ class TeamsAttendeeEngagementReportHandler:
         self.__joined_df = self.__filter_by_action('Joined')
         self.__left_df = self.__filter_by_action('Left')
         self.__sessions = self.__pair_sessions()
+        self.__participants = self.__calculate_participant_frequency()
         
         self.__print_summary()
         
@@ -27,6 +28,7 @@ class TeamsAttendeeEngagementReportHandler:
         self.sessions = self.__sessions
         self.start = self.__event_start
         self.end = self.__event_end
+        self.parts = self.__participants
         
     
     def __load_csv(self):
@@ -48,33 +50,41 @@ class TeamsAttendeeEngagementReportHandler:
  
     
     def __print_summary(self):
-        width = 45
+        width = 50
         summary = {
-            'header': {
-                'S U M M A R Y': ''
+            # 'header': {
+            #     'S U M M A R Y': '',
+            # },
+            'start_end': {
+                'Informed event start': self.__event_start,
+                'Informed event end': self.__event_end
             },
             'records': {
                 'Rows': str(self.__df.shape[0])
             },
             'join': {
                 'Joined rows': self.__joined_df.shape[0],
-                '- first at': self.__joined_df['UTC Joined Timestamp'].min(),
-                '- last at': self.__joined_df['UTC Joined Timestamp'].max(),
+                ' - First at': self.__joined_df['UTC Joined Timestamp'].min(),
+                ' - Last at': self.__joined_df['UTC Joined Timestamp'].max(),
             },
             'left': {
                 'Left rows': self.__left_df.shape[0],
-                '- first at': self.__left_df['UTC Left Timestamp'].min(),
-                '- last at': self.__left_df['UTC Left Timestamp'].max()
+                ' - First at': self.__left_df['UTC Left Timestamp'].min(),
+                ' - Last at': self.__left_df['UTC Left Timestamp'].max()
             },
             'sessions': {
                 'Unique sessions': len(self.__df['Session Id'].unique()),
-                '- anonymous sessions': self.__sessions['Participant Id'].isnull().sum()
+                ' - Left before event start': (self.__sessions['Session Validation']=='Left early').sum(),
+                ' - Joined after event end': (self.__sessions['Session Validation']=='Joined late').sum(),
+                ' - Without Participant Id': self.__sessions['Participant Id'].isnull().sum(),
             },
             'participants': {
                 'Unique participants': len(self.__sessions['Participant Id'].unique())
             }
         }
-        
+
+        print('S U M M A R Y'.center(width))
+        print('-'*width)        
         for section_names, section_values in summary.items():
             for k, v, in section_values.items():
                 len_k = len(k)
@@ -85,11 +95,18 @@ class TeamsAttendeeEngagementReportHandler:
         
     def __pair_sessions(self):
         paired_sess = pd.concat([self.__joined_df, self.__left_df['UTC Left Timestamp']], axis=1)
-        paired_sess['Valid Join'] = paired_sess['UTC Joined Timestamp'].apply(lambda x: 1 if x <= self.__event_end else 0)
-        paired_sess['Valid Leaving'] = paired_sess['UTC Left Timestamp'].apply(lambda x: 1 if x >= self.__event_start else 0)
-        paired_sess['Valid Session'] = paired_sess['Valid Join'] * paired_sess['Valid Leaving']
+        
+        is_join_late = paired_sess['UTC Joined Timestamp'].apply(lambda x: True if x >= self.__event_end else False)
+        is_leaving_early = paired_sess['UTC Left Timestamp'].apply(lambda x: True if x <= self.__event_start else False)
+        
+        paired_sess['Session Validation'] = 'Valid'
+        paired_sess.loc[is_join_late,'Session Validation'][is_join_late] = 'Joined late'
+        paired_sess.loc[is_leaving_early, 'Session Validation'] = 'Left early'
         
         return paired_sess
+
+
+
     
 
         
