@@ -17,7 +17,7 @@ class TeamsAttendeeEngagementReportHandler:
         self.__joined_df = self.__filter_by_action('Joined')
         self.__left_df = self.__filter_by_action('Left')
         self.__sessions = self.__pair_sessions()
-        self.__participants = self.__calculate_participant_frequency()
+        self.__participants = self.__calculate_frequency()
         
         self.__print_summary()
         
@@ -106,7 +106,15 @@ class TeamsAttendeeEngagementReportHandler:
         return paired_sess
 
 
+    def __calculate_frequency(self):
+        participants_sess = self.__sessions.copy()
+        participants_sess = participants_sess[~participants_sess['Participant Id'].isnull()]
+        participants_sess = participants_sess[participants_sess['Session Validation']=='Valid']
 
+        participants_ids = participants_sess['Participant Id'].unique()
+        participants_sess = participants_sess.set_index('Participant Id')
+        
+        return participants_sess
     
 
         
