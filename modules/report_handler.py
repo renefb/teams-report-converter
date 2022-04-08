@@ -110,11 +110,68 @@ class TeamsAttendeeEngagementReportHandler:
         participants_sess = self.__sessions.copy()
         participants_sess = participants_sess[~participants_sess['Participant Id'].isnull()]
         participants_sess = participants_sess[participants_sess['Session Validation']=='Valid']
-
+        
         participants_ids = participants_sess['Participant Id'].unique()
         participants_sess = participants_sess.set_index('Participant Id')
+
+        target_columns = ['Full Name', 'Role', 'UTC Joined Timestamp', 'UTC Left Timestamp']
+        participants_sess = participants_sess[target_columns]
+        participants_sess['Session Duration'] = participants_sess['UTC Left Timestamp'] - participants_sess['UTC Joined Timestamp']
         
-        return participants_sess
+        freq = []
+
+        for id in participants_ids:
+            participant = {'Participant Id': id}
+            participant_freq = participants_sess.loc[id]
+            if type(participant_freq)==pd.Series:
+                print('\tis a series')
+                participant_freq = participant_freq.to_frame()
+
+            fields_to_drop = ['UTC Joined Timestamp', 'UTC Left Timestamp']
+
+            print(f'Participant {id} has {participant_freq.shape[0]} valid sessions')
+            if participant_freq.shape[0]==1:
+                print('\tsingle session')
+                participant.update(participant_freq.drop(fields_to_drop).to_dict())
+            else:
+                print('\tmultiple sessions')
+                participant = self.__merge_sessions(participant_freq)
+                participant = participant.drop(fields_to_drop).to_dict()
+            freq.append(participant)
+
+        return pd.DataFrame(freq)
     
 
-        
+    def __merge_sessions(self, df):
+        # ['Participant Id']['Full Name', 'Role', 'UTC Joined Timestamp', 'UTC Left Timestamp', 'Session Duration']
+        print('\tentering into merge sessions:')
+        print(df)
+        session = df.iloc[0]
+        print('\t', type(session))
+        joined = session['UTC Joined Timestamp']
+        left = session['UTC Left Timestamp']
+        duration = session['Session Duration']
+        duration_arr = []
+
+        print('\tentering iterrows')
+        for i, row in df.iloc[1:].iterrows():
+            if row['UTC Joined Timestamp'] < left:
+                if row['UTC Left Timestamp'] <= left:
+                    pass
+                else:
+                    left = row['UTC Left Timestamp']
+                    duration = left - joined
+            else:
+                duration_arr.append(duration)
+                joined = row['UTC Joined Timestamp']
+                left = row['UTC Left Timestamp']
+                duration = left - joined
+        print('\texiting iterrows\n----------------------------')
+
+        duration_arr.append(duration)
+        duration_sum = np.array(duration_arr).sum()
+        session.loc['Session Duration'] = duration_sum
+
+        return session
+
+
