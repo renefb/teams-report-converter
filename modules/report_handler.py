@@ -17,7 +17,7 @@ class TeamsAttendeeEngagementReportHandler:
         self.__joined_df = self.__filter_by_action('Joined')
         self.__left_df = self.__filter_by_action('Left')
         self.__sessions = self.__pair_sessions()
-        self.__participants = self.__calculate_frequency()
+        self.__frequency = self.__calculate_frequency()
         
         self.__print_summary()
         
@@ -28,7 +28,7 @@ class TeamsAttendeeEngagementReportHandler:
         self.sessions = self.__sessions
         self.start = self.__event_start
         self.end = self.__event_end
-        self.parts = self.__participants
+        self.parts = self.__frequency
         
     
     def __load_csv(self):
@@ -41,13 +41,15 @@ class TeamsAttendeeEngagementReportHandler:
         
     
     def __filter_by_action(self, action):
+        action_col = f'{action}At'
         keep_param = 'first' if action=="Joined" else 'last'
         
-        action_sess = self.__df.query('Action==@action').rename(columns={'UtcEventTimestamp': f'{action}At'})
-        action_sess = action_sess.drop_duplicates(subset='SessionId', keep=keep_param)
-        action_sess = action_sess.drop(columns='Action').set_index('SessionId')
-        
-        return action_sess
+        df_action = self.__df.query('Action==@action').rename(columns={'UtcEventTimestamp': action_col})
+        df_action = df_action.drop_duplicates(subset='SessionId', keep=keep_param)
+        df_action = df_action.drop(columns='Action').set_index('SessionId')
+
+        ordered_cols = ['ParticipantId', 'FullName', 'Role', 'UserAgent', action_col]        
+        return df_action[ordered_cols]
  
     
     def __print_summary(self):
@@ -92,76 +94,103 @@ class TeamsAttendeeEngagementReportHandler:
     
         
     def __pair_sessions(self):
-        paired_sess = pd.concat([self.__joined_df, self.__left_df['LeftAt']], axis=1)
+        df_sess = pd.concat([self.__joined_df, self.__left_df['LeftAt']], axis=1)
         
-        is_join_late = paired_sess['JoinedAt'].apply(lambda x: True if x >= self.__event_end else False)
-        is_leaving_early = paired_sess['LeftAt'].apply(lambda x: True if x <= self.__event_start else False)
+        # is_join_late = df_sess['JoinedAt'].apply(lambda x: True if x >= self.__event_end else False)
+        # is_leaving_early = df_sess['LeftAt'].apply(lambda x: True if x <= self.__event_start else False)
         
-        paired_sess['Validation'] = 'Valid'
-        paired_sess.loc[is_join_late,'Validation'][is_join_late] = 'Joined late'
-        paired_sess.loc[is_leaving_early, 'Validation'] = 'Left early'
+        # df_sess['TruncJoined'] = df_sess['JoinedAt'].apply(lambda x: x if x>self.__event_start else self.__event_start)
+        # df_sess['TruncLeft'] = df_sess['LeftAt'].apply(lambda x: x if x<self.__event_end else self.__event_end)
+        
+        # df_sess['Validation'] = 'Valid'
+        # df_sess.loc[is_join_late,'Validation'] = 'Joined late'
+        # df_sess.loc[is_join_late,'TruncJoined'] = self.__event_end
 
-        paired_sess['TruncJoinedAt'] = paired_sess['JoinedAt'].apply(lambda x: x if x>self.__event_start else self.__event_start)
-        paired_sess['TruncLeftAt'] = paired_sess['LeftAt'].apply(lambda x: x if x<self.__event_end else self.__event_end)
+        # df_sess.loc[is_leaving_early, 'Validation'] = 'Left early'
+        # df_sess.loc[is_leaving_early, 'TruncLeftAt'] = self.__event_start
 
-        paired_sess.loc[is_join_late,'Validation'] = 'Joined late'
-        paired_sess.loc[is_join_late,'TruncJoinedAt'] = self.__event_end
-        paired_sess.loc[is_leaving_early, 'Validation'] = 'Left early'
-        paired_sess.loc[is_leaving_early, 'TruncLeftAt'] = self.__event_start
-        
-        return paired_sess
+        df_sess['TruncJoined'] = df_sess['JoinedAt']
+        df_sess['TruncLeft'] = df_sess['LeftAt']
+        df_sess['LocalTruncJoined'] = df_sess['JoinedAt']
+        df_sess['LocalTruncLeft'] = df_sess['LeftAt']
+        df_sess['Validation'] = 'Valid'
+
+        for idx, row in df_sess.iterrows():
+            if row['TruncJoined'] < self.__event_start:
+                df_sess.loc[idx, 'TruncJoined'] = self.__event_start
+                if row['TruncLeft'] < self.__event_start:
+                    df_sess.loc[idx, 'Validation'] = 'Left early'
+                    df_sess.loc[idx, 'TruncJoined'] = df_sess.loc[idx, 'TruncLeft']
+            elif row['TruncLeft'] > self.__event_end:
+                df_sess.loc[idx, 'TruncLeft'] = self.__event_end
+                if row['TruncJoined'] > self.__event_end:
+                    df_sess.loc[idx, 'Validation'] = 'Joined late'
+                    df_sess.loc[idx, 'TruncLeft'] = df_sess.loc[idx, 'TruncJoined']
+
+        return df_sess
 
 
     def __calculate_frequency(self):
-        participants_sess = self.__sessions.copy()
-        participants_sess = participants_sess[~participants_sess['ParticipantId'].isnull()]
-        participants_sess = participants_sess[participants_sess['Validation']=='Valid']
-        
-        participants_ids = participants_sess['ParticipantId'].unique()
-        participants_sess = participants_sess.set_index('ParticipantId')
+        df_sess = self.__sessions.copy()
+        df_sess = df_sess[~df_sess['ParticipantId'].isnull()]
 
-        target_columns = ['FullName', 'Role', 'JoinedAt', 'LeftAt']
-        participants_sess = participants_sess[target_columns]
-        participants_sess['Duration'] = participants_sess['LeftAt'] - participants_sess['JoinedAt']
+        # df_sess['TruncJoinedAt'] = df_sess['JoinedAt'].apply(lambda x: x if x>self.__event_start else self.__event_start)
+        # df_sess['TruncLeftAt'] = df_sess['LeftAt'].apply(lambda x: x if x<self.__event_end else self.__event_end)
+
+        # df_sess.loc[df_sess['TruncJoinedAt'] > self.__event_end,'TruncJoinedAt'] = self.__event_end
+        # df_sess.loc[df_sess['TruncLeftAt'] < self.__event_start, 'TruncLeftAt'] = self.__event_start
+        
+        # participants_sess = participants_sess[participants_sess['Validation']=='Valid']
+        
+        participants_ids = df_sess['ParticipantId'].unique()
+        df_sess = df_sess.set_index('ParticipantId')
+        df_sess.index.names = ['ParticipantId']
+
+        target_columns = ['FullName', 'Role', 'TruncJoined', 'TruncLeft']
+        df_sess = df_sess[target_columns]
+        df_sess['Duration'] = df_sess['TruncLeft'] - df_sess['TruncJoined']
         
         freq = []
 
         for id in participants_ids:
-            participant_slice = participants_sess.loc[id]
-            if type(participant_slice)==pd.DataFrame:
-                participant_slice = self.__merge_sessions(participant_slice)
+            record = df_sess.loc[id]
+            if type(record)==pd.DataFrame:
+                record = self.__merge_sessions(df_sess.loc[id])
+            record = record.drop(['TruncJoined', 'TruncLeft'])
+            freq.append(record)
 
-            participant_slice = participant_slice.drop(['JoinedAt', 'LeftAt'])
-
-            freq.append(participant_slice)
-
-        return pd.DataFrame(freq)
+        df_freq = pd.DataFrame(freq)
+        # df_freq = df_freq.reset_index()
+        df_freq = df_freq.sort_values(by=['FullName'])
+        return df_freq
     
 
     def __merge_sessions(self, df):
-        session = df.iloc[0]
-        joined = session['JoinedAt']
-        left = session['LeftAt']
-        duration = session['Duration']
+        record = df.iloc[0]
+        joined = record['TruncJoined']
+        left = record['TruncLeft']
+        duration = record['Duration']
         duration_arr = []
 
+        # print('starting with' session.name, joined)
+
         for i, row in df.iloc[1:].iterrows():
-            if row['JoinedAt'] < left:
-                if row['LeftAt'] <= left:
+            if row['TruncJoined'] < left:
+                if row['TruncLeft'] <= left:
                     pass
                 else:
-                    left = row['LeftAt']
+                    left = row['TruncLeft']
                     duration = left - joined
             else:
                 duration_arr.append(duration)
-                joined = row['JoinedAt']
-                left = row['LeftAt']
+                joined = row['TruncJoined']
+                left = row['TruncLeft']
                 duration = left - joined
 
         duration_arr.append(duration)
         duration_sum = np.array(duration_arr).sum()
-        session.loc['Duration'] = duration_sum
+        record.loc['Duration'] = duration_sum
 
-        return session
+        return record
 
 
