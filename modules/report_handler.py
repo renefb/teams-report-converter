@@ -60,42 +60,23 @@ class TeamsAttendeeEngagementReportHandler:
         df_sess['Validation'] = 'Valid'
 
         for idx, row in df_sess.iterrows():
-            
-            if pd.isnull(row['TruncLeft']):
-                trunc_left = self.__event_end if row['TruncJoined'] <= self.__event_end else row['TruncJoined']
-                df_sess.loc[idx, 'TruncLeft'] = trunc_left
-            
-            # if row['TruncJoined'] < self.__event_start:
-            #     df_sess.loc[idx, 'TruncJoined'] = self.__event_start
-            #     if row['TruncLeft'] < self.__event_start:
-            #         df_sess.loc[idx, 'Validation'] = 'Left early'
-            #         df_sess.loc[idx, 'TruncJoined'] = df_sess.loc[idx, 'TruncLeft']
-            # elif row['TruncLeft'] > self.__event_end:
-            #     df_sess.loc[idx, 'TruncLeft'] = self.__event_end
-            #     if row['TruncJoined'] > self.__event_end:
-            #         df_sess.loc[idx, 'Validation'] = 'Joined late'
-            #         df_sess.loc[idx, 'TruncLeft'] = df_sess.loc[idx, 'TruncJoined']
 
-            if row['TruncJoined'] < self.__event_start:
-                if row['TruncLeft'] < self.__event_start:
-                    df_sess.loc[idx, 'TruncJoined'] = row['TruncLeft']
-                    df_sess.loc[idx, 'Validation'] = 'Left early'
-                else:
-                    df_sess.loc[idx, 'TruncJoined'] = self.__event_start
-            elif row['TruncJoined'] > self.__event_end:
-                df_sess.loc[idx, 'TruncLeft'] = row['TruncJoined']
+            if (row['TruncJoined'] < self.__event_start) or (pd.isnull(row['TruncJoined'])):
+                df_sess.loc[idx, 'TruncJoined'] = min(row['TruncLeft'], self.__event_start)
+            if (row['TruncLeft'] > self.__event_end) or (pd.isnull(row['TruncLeft'])):
+                df_sess.loc[idx, 'TruncLeft'] = max(row['TruncJoined'], self.__event_end)
+
+            if row['TruncLeft'] < self.__event_start:
+                df_sess.loc[idx, 'Validation'] = 'Left early'
+            if row['TruncJoined'] > self.__event_end:
                 df_sess.loc[idx, 'Validation'] = 'Joined late'
-
-            if row['TruncLeft'] > self.__event_end:
-                df_sess.loc[idx, 'TruncLeft'] = self.__event_end
-        
+                
         if self.__local_tz not in ('UTC', 'GMT'):
             df_sess['LocalTruncJoined'] = df_sess['TruncJoined'].dt.tz_convert(self.__local_tz)
             df_sess['LocalTruncLeft'] = df_sess['TruncLeft'].dt.tz_convert(self.__local_tz)
 
-        idx_validation = np.where(df_sess.columns=='Validation')[0][0]
-        ordered_cols = np.append(np.delete(df_sess.columns, idx_validation), 'Validation')
-        
+        idx_col_validation = np.where(df_sess.columns=='Validation')[0][0]
+        ordered_cols = np.append(np.delete(df_sess.columns, idx_col_validation), 'Validation')        
         return df_sess[ordered_cols]
 
 
