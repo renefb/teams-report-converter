@@ -4,6 +4,8 @@ import pandas as pd
 import pytz
 
 
+#TODO: docstrings
+#TODO: build package
 class TeamsAttendeeEngagementReportHandler:
     
     def __init__(self, report_content, event_start, event_end, local_tz='UTC'):
@@ -18,16 +20,6 @@ class TeamsAttendeeEngagementReportHandler:
         self.sessions = self.__pair_sessions()
         self.frequency = self.__calculate_frequency()
         
-        # self.__print_summary()
-        
-        ## apagar?
-        # self.df = self.data
-        # self.joined = self.__joined_df
-        # self.left = self.__left_df
-        # self.sessions = self.sessions
-        self.start = self.__event_start
-        self.end = self.__event_end
-        # self.parts = self.__frequency
         
     
     def __load_csv(self):
@@ -52,6 +44,7 @@ class TeamsAttendeeEngagementReportHandler:
         return df_action[ordered_cols]
  
     
+
     def __pair_sessions(self):
         df_sess = pd.concat([self.__joined_df, self.__left_df['LeftAt']], axis=1)
         
@@ -80,6 +73,7 @@ class TeamsAttendeeEngagementReportHandler:
         return df_sess[ordered_cols]
 
 
+
     def __calculate_frequency(self):
         df_sess = self.sessions.copy()
         df_sess = df_sess[~df_sess['ParticipantId'].isnull()]
@@ -106,6 +100,7 @@ class TeamsAttendeeEngagementReportHandler:
         return df_freq
     
 
+
     def __merge_sessions(self, df):
         record = df.iloc[0]
         joined = record['TruncJoined']
@@ -131,6 +126,7 @@ class TeamsAttendeeEngagementReportHandler:
         record.loc['Duration'] = duration_sum
 
         return record
+
 
 
     def summary(self):
@@ -160,7 +156,7 @@ class TeamsAttendeeEngagementReportHandler:
                 ' - Without Participant Id': self.sessions['ParticipantId'].isnull().sum(),
             },
             'participants': {
-                'Unique participants': len(self.sessions['ParticipantId'].unique())
+                'Unique participants': len(self.sessions['ParticipantId'].unique()) - 1  # -1 for the unknown participant
             }
         }
 
