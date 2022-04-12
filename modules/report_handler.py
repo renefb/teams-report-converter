@@ -6,35 +6,35 @@ import pytz
 
 class TeamsAttendeeEngagementReportHandler:
     
-    def __init__(self, report_content, event_start, event_end, local_tz='GMT'):
+    def __init__(self, report_content, event_start, event_end, local_tz='UTC'):
         self.__report_content = report_content
         self.__local_tz = local_tz
-        self.__event_start = pd.Timestamp(event_start, tz=self.__local_tz).astimezone(pytz.timezone('GMT'))
-        self.__event_end = pd.Timestamp(event_end, tz=self.__local_tz).astimezone(pytz.timezone('GMT'))
+        self.__event_start = pd.Timestamp(event_start, tz=self.__local_tz).astimezone(pytz.timezone('UTC'))
+        self.__event_end = pd.Timestamp(event_end, tz=self.__local_tz).astimezone(pytz.timezone('UTC'))
                 
-        self.__df = self.__load_csv()
+        self.data = self.__load_csv()
         self.__joined_df = self.__filter_by_action('Joined')
         self.__left_df = self.__filter_by_action('Left')
-        self.__sessions = self.__pair_sessions()
-        self.__frequency = self.__calculate_frequency()
+        self.sessions = self.__pair_sessions()
+        self.frequency = self.__calculate_frequency()
         
-        self.__print_summary()
+        # self.__print_summary()
         
         ## apagar?
-        self.df = self.__df
-        self.joined = self.__joined_df
-        self.left = self.__left_df
-        self.sessions = self.__sessions
+        # self.df = self.data
+        # self.joined = self.__joined_df
+        # self.left = self.__left_df
+        # self.sessions = self.sessions
         self.start = self.__event_start
         self.end = self.__event_end
-        self.parts = self.__frequency
+        # self.parts = self.__frequency
         
     
     def __load_csv(self):
         df = pd.read_csv(self.__report_content, parse_dates=['UTC Event Timestamp'])
         # TODO: implementar mapper para rename das colunas
         df.columns = ['SessionId', 'ParticipantId', 'FullName', 'UserAgent', 'UtcEventTimestamp', 'Action', 'Role']
-        df['UtcEventTimestamp'] = df['UtcEventTimestamp'].apply(lambda x: pytz.timezone('GMT').localize(x))
+        df['UtcEventTimestamp'] = df['UtcEventTimestamp'].apply(lambda x: pytz.timezone('UTC').localize(x))
         df = df.sort_values(by=['UtcEventTimestamp'])
         return df
         
@@ -44,7 +44,7 @@ class TeamsAttendeeEngagementReportHandler:
         action_col = f'{action}At'
         keep_param = 'first' if action=="Joined" else 'last'
         
-        df_action = self.__df.query('Action==@action').rename(columns={'UtcEventTimestamp': action_col})
+        df_action = self.data.query('Action==@action').rename(columns={'UtcEventTimestamp': action_col})
         df_action = df_action.drop_duplicates(subset='SessionId', keep=keep_param)
         df_action = df_action.drop(columns='Action').set_index('SessionId')
 
@@ -52,47 +52,6 @@ class TeamsAttendeeEngagementReportHandler:
         return df_action[ordered_cols]
  
     
-    def __print_summary(self):
-        width = 50
-        summary = {
-            'start_end': {
-                'Informed event start': self.__event_start,
-                'Informed event end': self.__event_end
-            },
-            'records': {
-                'Rows': str(self.__df.shape[0])
-            },
-            'join': {
-                'Joined rows': self.__joined_df.shape[0],
-                ' - First at': self.__joined_df['JoinedAt'].min(),
-                ' - Last at': self.__joined_df['JoinedAt'].max(),
-            },
-            'left': {
-                'Left rows': self.__left_df.shape[0],
-                ' - First at': self.__left_df['LeftAt'].min(),
-                ' - Last at': self.__left_df['LeftAt'].max()
-            },
-            'sessions': {
-                'Unique sessions': len(self.__df['SessionId'].unique()),
-                ' - Left before event start': (self.__sessions['Validation']=='Left early').sum(),
-                ' - Joined after event end': (self.__sessions['Validation']=='Joined late').sum(),
-                ' - Without Participant Id': self.__sessions['ParticipantId'].isnull().sum(),
-            },
-            'participants': {
-                'Unique participants': len(self.__sessions['ParticipantId'].unique())
-            }
-        }
-
-        print('S U M M A R Y'.center(width))
-        print('-'*width)        
-        for section_names, section_values in summary.items():
-            for k, v, in section_values.items():
-                len_k = len(k)
-                print(k, str(v).rjust(width - len_k - 1))
-            print('-'*width)
-        
-    
-        
     def __pair_sessions(self):
         df_sess = pd.concat([self.__joined_df, self.__left_df['LeftAt']], axis=1)
         
@@ -101,17 +60,33 @@ class TeamsAttendeeEngagementReportHandler:
         df_sess['Validation'] = 'Valid'
 
         for idx, row in df_sess.iterrows():
+            
+            if pd.isnull(row['TruncLeft']):
+                trunc_left = self.__event_end if row['TruncJoined'] <= self.__event_end else row['TruncJoined']
+                df_sess.loc[idx, 'TruncLeft'] = trunc_left
+            
+            # if row['TruncJoined'] < self.__event_start:
+            #     df_sess.loc[idx, 'TruncJoined'] = self.__event_start
+            #     if row['TruncLeft'] < self.__event_start:
+            #         df_sess.loc[idx, 'Validation'] = 'Left early'
+            #         df_sess.loc[idx, 'TruncJoined'] = df_sess.loc[idx, 'TruncLeft']
+            # elif row['TruncLeft'] > self.__event_end:
+            #     df_sess.loc[idx, 'TruncLeft'] = self.__event_end
+            #     if row['TruncJoined'] > self.__event_end:
+            #         df_sess.loc[idx, 'Validation'] = 'Joined late'
+            #         df_sess.loc[idx, 'TruncLeft'] = df_sess.loc[idx, 'TruncJoined']
+
             if row['TruncJoined'] < self.__event_start:
-                df_sess.loc[idx, 'TruncJoined'] = self.__event_start
                 if row['TruncLeft'] < self.__event_start:
+                    df_sess.loc[idx, 'TruncJoined'] = row['TruncLeft']
                     df_sess.loc[idx, 'Validation'] = 'Left early'
-                    df_sess.loc[idx, 'TruncJoined'] = df_sess.loc[idx, 'TruncLeft']
-            elif row['TruncLeft'] > self.__event_end:
-                df_sess.loc[idx, 'TruncLeft'] = self.__event_end
-                if row['TruncJoined'] > self.__event_end:
-                    df_sess.loc[idx, 'Validation'] = 'Joined late'
-                    df_sess.loc[idx, 'TruncLeft'] = df_sess.loc[idx, 'TruncJoined']
-            elif pd.isnull(row['TruncLeft']):
+                else:
+                    df_sess.loc[idx, 'TruncJoined'] = self.__event_start
+            elif row['TruncJoined'] > self.__event_end:
+                df_sess.loc[idx, 'TruncLeft'] = row['TruncJoined']
+                df_sess.loc[idx, 'Validation'] = 'Joined late'
+
+            if row['TruncLeft'] > self.__event_end:
                 df_sess.loc[idx, 'TruncLeft'] = self.__event_end
         
         if self.__local_tz not in ('UTC', 'GMT'):
@@ -125,7 +100,7 @@ class TeamsAttendeeEngagementReportHandler:
 
 
     def __calculate_frequency(self):
-        df_sess = self.__sessions.copy()
+        df_sess = self.sessions.copy()
         df_sess = df_sess[~df_sess['ParticipantId'].isnull()]
 
         participants_ids = df_sess['ParticipantId'].unique()
@@ -146,7 +121,6 @@ class TeamsAttendeeEngagementReportHandler:
             freq.append(record)
 
         df_freq = pd.DataFrame(freq)
-        # df_freq = df_freq.reset_index()
         df_freq = df_freq.sort_values(by=['FullName'])
         return df_freq
     
@@ -178,3 +152,45 @@ class TeamsAttendeeEngagementReportHandler:
         return record
 
 
+    def summary(self):
+        width = 50
+        summary = {
+            'start_end': {
+                'Informed event start': self.__event_start,
+                'Informed event end': self.__event_end
+            },
+            'records': {
+                'Rows': str(self.data.shape[0])
+            },
+            'join': {
+                'Joined rows': self.__joined_df.shape[0],
+                ' - First at': self.__joined_df['JoinedAt'].min(),
+                ' - Last at': self.__joined_df['JoinedAt'].max(),
+            },
+            'left': {
+                'Left rows': self.__left_df.shape[0],
+                ' - First at': self.__left_df['LeftAt'].min(),
+                ' - Last at': self.__left_df['LeftAt'].max()
+            },
+            'sessions': {
+                'Unique sessions': len(self.data['SessionId'].unique()),
+                ' - Left before event start': (self.sessions['Validation']=='Left early').sum(),
+                ' - Joined after event end': (self.sessions['Validation']=='Joined late').sum(),
+                ' - Without Participant Id': self.sessions['ParticipantId'].isnull().sum(),
+            },
+            'participants': {
+                'Unique participants': len(self.sessions['ParticipantId'].unique())
+            }
+        }
+
+        print('S U M M A R Y'.center(width))
+        print('-'*width)        
+        for section_names, section_values in summary.items():
+            for k, v, in section_values.items():
+                len_k = len(k)
+                print(k, str(v).rjust(width - len_k - 1))
+            print('-'*width)
+        
+    
+        
+    
