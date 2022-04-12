@@ -32,6 +32,7 @@ class TeamsAttendeeEngagementReportHandler:
     
     def __load_csv(self):
         df = pd.read_csv(self.__report_content, parse_dates=['UTC Event Timestamp'])
+        # TODO: implementar mapper para rename das colunas
         df.columns = ['SessionId', 'ParticipantId', 'FullName', 'UserAgent', 'UtcEventTimestamp', 'Action', 'Role']
         df['UtcEventTimestamp'] = df['UtcEventTimestamp'].apply(lambda x: pytz.timezone('GMT').localize(x))
         df = df.sort_values(by=['UtcEventTimestamp'])
@@ -113,10 +114,12 @@ class TeamsAttendeeEngagementReportHandler:
             elif pd.isnull(row['TruncLeft']):
                 df_sess.loc[idx, 'TruncLeft'] = self.__event_end
         
-        df_sess['LocalTruncJoined'] = df_sess['TruncJoined'].dt.tz_convert(self.__local_tz)
-        df_sess['LocalTruncLeft'] = df_sess['TruncLeft'].dt.tz_convert(self.__local_tz)
+        if self.__local_tz not in ('UTC', 'GMT'):
+            df_sess['LocalTruncJoined'] = df_sess['TruncJoined'].dt.tz_convert(self.__local_tz)
+            df_sess['LocalTruncLeft'] = df_sess['TruncLeft'].dt.tz_convert(self.__local_tz)
 
-        ordered_cols = np.append(np.delete(df_sess.columns, 8), 'Validation')
+        idx_validation = np.where(df_sess.columns=='Validation')[0][0]
+        ordered_cols = np.append(np.delete(df_sess.columns, idx_validation), 'Validation')
         
         return df_sess[ordered_cols]
 
