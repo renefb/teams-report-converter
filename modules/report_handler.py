@@ -8,10 +8,9 @@ class TeamsAttendeeEngagementReportHandler:
     
     def __init__(self, report_content, event_start, event_end, local_tz='GMT'):
         self.__report_content = report_content
-        # self.__report_tz = pytz.timezone('GMT')
-        self.__event_start = pd.Timestamp(event_start, tz=local_tz).astimezone(pytz.timezone('GMT'))
-        self.__event_end = pd.Timestamp(event_end, tz=local_tz).astimezone(pytz.timezone('GMT'))
-        self.__tz_localizer = pytz.timezone(local_tz)
+        self.__local_tz = local_tz
+        self.__event_start = pd.Timestamp(event_start, tz=self.__local_tz).astimezone(pytz.timezone('GMT'))
+        self.__event_end = pd.Timestamp(event_end, tz=self.__local_tz).astimezone(pytz.timezone('GMT'))
                 
         self.__df = self.__load_csv()
         self.__joined_df = self.__filter_by_action('Joined')
@@ -96,23 +95,8 @@ class TeamsAttendeeEngagementReportHandler:
     def __pair_sessions(self):
         df_sess = pd.concat([self.__joined_df, self.__left_df['LeftAt']], axis=1)
         
-        # is_join_late = df_sess['JoinedAt'].apply(lambda x: True if x >= self.__event_end else False)
-        # is_leaving_early = df_sess['LeftAt'].apply(lambda x: True if x <= self.__event_start else False)
-        
-        # df_sess['TruncJoined'] = df_sess['JoinedAt'].apply(lambda x: x if x>self.__event_start else self.__event_start)
-        # df_sess['TruncLeft'] = df_sess['LeftAt'].apply(lambda x: x if x<self.__event_end else self.__event_end)
-        
-        # df_sess['Validation'] = 'Valid'
-        # df_sess.loc[is_join_late,'Validation'] = 'Joined late'
-        # df_sess.loc[is_join_late,'TruncJoined'] = self.__event_end
-
-        # df_sess.loc[is_leaving_early, 'Validation'] = 'Left early'
-        # df_sess.loc[is_leaving_early, 'TruncLeftAt'] = self.__event_start
-
         df_sess['TruncJoined'] = df_sess['JoinedAt']
         df_sess['TruncLeft'] = df_sess['LeftAt']
-        df_sess['LocalTruncJoined'] = df_sess['JoinedAt']
-        df_sess['LocalTruncLeft'] = df_sess['LeftAt']
         df_sess['Validation'] = 'Valid'
 
         for idx, row in df_sess.iterrows():
@@ -126,22 +110,21 @@ class TeamsAttendeeEngagementReportHandler:
                 if row['TruncJoined'] > self.__event_end:
                     df_sess.loc[idx, 'Validation'] = 'Joined late'
                     df_sess.loc[idx, 'TruncLeft'] = df_sess.loc[idx, 'TruncJoined']
+            elif pd.isnull(row['TruncLeft']):
+                df_sess.loc[idx, 'TruncLeft'] = self.__event_end
+        
+        df_sess['LocalTruncJoined'] = df_sess['TruncJoined'].dt.tz_convert(self.__local_tz)
+        df_sess['LocalTruncLeft'] = df_sess['TruncLeft'].dt.tz_convert(self.__local_tz)
 
-        return df_sess
+        ordered_cols = np.append(np.delete(df_sess.columns, 8), 'Validation')
+        
+        return df_sess[ordered_cols]
 
 
     def __calculate_frequency(self):
         df_sess = self.__sessions.copy()
         df_sess = df_sess[~df_sess['ParticipantId'].isnull()]
 
-        # df_sess['TruncJoinedAt'] = df_sess['JoinedAt'].apply(lambda x: x if x>self.__event_start else self.__event_start)
-        # df_sess['TruncLeftAt'] = df_sess['LeftAt'].apply(lambda x: x if x<self.__event_end else self.__event_end)
-
-        # df_sess.loc[df_sess['TruncJoinedAt'] > self.__event_end,'TruncJoinedAt'] = self.__event_end
-        # df_sess.loc[df_sess['TruncLeftAt'] < self.__event_start, 'TruncLeftAt'] = self.__event_start
-        
-        # participants_sess = participants_sess[participants_sess['Validation']=='Valid']
-        
         participants_ids = df_sess['ParticipantId'].unique()
         df_sess = df_sess.set_index('ParticipantId')
         df_sess.index.names = ['ParticipantId']
@@ -171,8 +154,6 @@ class TeamsAttendeeEngagementReportHandler:
         left = record['TruncLeft']
         duration = record['Duration']
         duration_arr = []
-
-        # print('starting with' session.name, joined)
 
         for i, row in df.iloc[1:].iterrows():
             if row['TruncJoined'] < left:
