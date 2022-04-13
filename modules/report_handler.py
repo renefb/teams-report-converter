@@ -135,7 +135,7 @@ class TeamsAttendeeEngagementReportHandler:
 
 
 
-    def __summary(self):
+    def __summary(self, print_summary=True):
         width = 50
         summary = {
             'start_end': {
