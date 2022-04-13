@@ -135,7 +135,7 @@ class TeamsAttendeeEngagementReportHandler:
 
 
 
-    def __summary(self, print_summary=True):
+    def __summary(self):
         width = 50
         summary = {
             'start_end': {
@@ -176,7 +176,7 @@ class TeamsAttendeeEngagementReportHandler:
         
     
         
-    def process_data(self):
+    def process_data(self, print_summary=True):
         data = self.__data.copy()
         sess = self.__sessions.copy()
         freq = self.__frequency.copy()
@@ -192,7 +192,8 @@ class TeamsAttendeeEngagementReportHandler:
         for col in td_cols:
             freq[col] = freq[col].apply(lambda x: str(x))
 
-        self.__summary()
+        if print_summary:
+            self.__summary()
 
         return data, sess, freq
 
