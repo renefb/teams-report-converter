@@ -14,11 +14,11 @@ class TeamsAttendeeEngagementReportHandler:
         self.__event_start = pd.Timestamp(event_start, tz=self.__local_tz).astimezone(pytz.timezone('UTC'))
         self.__event_end = pd.Timestamp(event_end, tz=self.__local_tz).astimezone(pytz.timezone('UTC'))
                 
-        self.data = self.__load_csv()
+        self.__data = self.__load_csv()
         self.__joined_df = self.__filter_by_action('Joined')
         self.__left_df = self.__filter_by_action('Left')
-        self.sessions = self.__pair_sessions()
-        self.frequency = self.__calculate_frequency()
+        self.__sessions = self.__pair_sessions()
+        self.__frequency = self.__calculate_frequency()
         
         
     
@@ -42,7 +42,7 @@ class TeamsAttendeeEngagementReportHandler:
         action_col = f'{action}At'
         keep_param = 'first' if action=="Joined" else 'last'
         
-        df_action = self.data.query('Action==@action').rename(columns={'UtcEventTimestamp': action_col})
+        df_action = self.__data.query('Action==@action').rename(columns={'UtcEventTimestamp': action_col})
         df_action = df_action.drop_duplicates(subset='SessionId', keep=keep_param)
         df_action = df_action.drop(columns='Action').set_index('SessionId')
 
@@ -81,7 +81,7 @@ class TeamsAttendeeEngagementReportHandler:
 
 
     def __calculate_frequency(self):
-        df_sess = self.sessions.copy()
+        df_sess = self.__sessions.copy()
         df_sess = df_sess[~df_sess['ParticipantId'].isnull()]
 
         participants_ids = df_sess['ParticipantId'].unique()
@@ -135,7 +135,7 @@ class TeamsAttendeeEngagementReportHandler:
 
 
 
-    def summary(self):
+    def __summary(self):
         width = 50
         summary = {
             'start_end': {
@@ -143,7 +143,7 @@ class TeamsAttendeeEngagementReportHandler:
                 'Informed event end': self.__event_end
             },
             'records': {
-                'Rows': str(self.data.shape[0])
+                'Rows': str(self.__data.shape[0])
             },
             'join': {
                 'Joined rows': self.__joined_df.shape[0],
@@ -156,13 +156,13 @@ class TeamsAttendeeEngagementReportHandler:
                 ' - Last at': self.__left_df['LeftAt'].max()
             },
             'sessions': {
-                'Unique sessions': len(self.data['SessionId'].unique()),
-                ' - Left before event start': (self.sessions['Validation']=='Left early').sum(),
-                ' - Joined after event end': (self.sessions['Validation']=='Joined late').sum(),
-                ' - Without Participant Id': self.sessions['ParticipantId'].isnull().sum(),
+                'Unique sessions': len(self.__data['SessionId'].unique()),
+                ' - Left before event start': (self.__sessions['Validation']=='Left early').sum(),
+                ' - Joined after event end': (self.__sessions['Validation']=='Joined late').sum(),
+                ' - Without Participant Id': self.__sessions['ParticipantId'].isnull().sum(),
             },
             'participants': {
-                'Unique participants': len(self.sessions['ParticipantId'].unique()) - 1  # -1 for the unknown participant
+                'Unique participants': len(self.__sessions['ParticipantId'].unique()) - 1  # -1 for the unknown participant
             }
         }
 
@@ -176,4 +176,26 @@ class TeamsAttendeeEngagementReportHandler:
         
     
         
+    def process_data(self):
+        data = self.__data.copy()
+        sess = self.__sessions.copy()
+        freq = self.__frequency.copy()
+
+        data.index = data.index + 1
+        
+        for df in [data, sess]:
+            dt_cols = df.select_dtypes(include=['datetime64[ns, UTC]']).columns
+            for col in dt_cols:
+                df[col] = df[col].apply(lambda x: x.replace(tzinfo=None))
+
+        td_cols = freq.select_dtypes(include=['timedelta64[ns]'])
+        for col in td_cols:
+            freq[col] = freq[col].apply(lambda x: str(x))
+
+        self.__summary()
+
+        return data, sess, freq
+
+
+
     
