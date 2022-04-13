@@ -24,8 +24,14 @@ class TeamsAttendeeEngagementReportHandler:
     
     def __load_csv(self):
         df = pd.read_csv(self.__report_content, parse_dates=['UTC Event Timestamp'])
-        # TODO: implementar mapper para rename das colunas
-        df.columns = ['SessionId', 'ParticipantId', 'FullName', 'UserAgent', 'UtcEventTimestamp', 'Action', 'Role']
+        # keep 'UserAgent', 'Role' and 'Action' collumn names, rename others
+        columns_mapper = {
+            'Session Id': 'SessionId',
+            'Participant Id': 'ParticipantId',
+            'Full Name': 'FullName',
+            'UTC Event Timestamp': 'UtcEventTimestamp'
+        } 
+        df = df.rename(columns=columns_mapper)
         df['UtcEventTimestamp'] = df['UtcEventTimestamp'].apply(lambda x: pytz.timezone('UTC').localize(x))
         df = df.sort_values(by=['UtcEventTimestamp'])
         return df
