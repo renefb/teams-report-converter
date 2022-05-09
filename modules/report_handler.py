@@ -1,3 +1,4 @@
+from datetime import datetime
 import numpy as np
 import pandas as pd
 import pytz
@@ -6,13 +7,18 @@ import pytz
 #TODO: docstrings
 #TODO: build package
 #TODO: refactor original row indexing
+#TODO: treat warnings in a better way
 class TeamsAttendeeEngagementReportHandler:
     
     def __init__(self, report_content, event_start, event_end, local_tz='UTC'):
         self.__report_content = report_content
         self.__local_tz = local_tz
-        self.__event_start = pd.Timestamp(event_start, tz=self.__local_tz).astimezone(pytz.timezone('UTC'))
-        self.__event_end = pd.Timestamp(event_end, tz=self.__local_tz).astimezone(pytz.timezone('UTC'))
+        # self.event_start = pd.Timestamp(event_start, tz=self.__local_tz).astimezone(pytz.timezone('UTC'))
+        _event_start = datetime.strptime(event_start, '%Y-%m-%d %H:%M:%S')
+        self.event_start = pytz.timezone(self.__local_tz).localize(_event_start).astimezone(pytz.timezone('UTC'))
+        # self.event_end = pd.Timestamp(event_end, tz=self.__local_tz).astimezone(pytz.timezone('UTC'))
+        _event_end = datetime.strptime(event_end, '%Y-%m-%d %H:%M:%S')
+        self.event_end = pytz.timezone(self.__local_tz).localize(_event_end).astimezone(pytz.timezone('UTC'))
                 
         self.data = self.__load_csv()
         self.__joined_df = self.__filter_by_action('Joined')
@@ -54,28 +60,34 @@ class TeamsAttendeeEngagementReportHandler:
     
 
     def __pair_sessions(self):
-        df_sess = pd.concat([self.__joined_df, self.__left_df['LeftAt']], axis=1)
+        paired_sess = pd.concat([self.__joined_df, self.__left_df['LeftAt']], axis=1)
+        df_sess = pd.DataFrame()
         
-        df_sess['TruncJoined'] = df_sess['JoinedAt']
-        df_sess['TruncLeft'] = df_sess['LeftAt']
-        df_sess['Validation'] = 'Valid'
+        dt_infinity = datetime(9999, 12, 31, 23, 59, 59)
+        dt_infinity = pytz.timezone('UTC').localize(dt_infinity)
+        # paired_sess['LeftAt'].fillna(dt_infinity, inplace=True)
 
-        for idx, row in df_sess.iterrows():
+        for idx, row in paired_sess.iterrows():
 
-            if (row['TruncJoined'] < self.__event_start) or (pd.isnull(row['TruncJoined'])):
-                df_sess.loc[idx, 'TruncJoined'] = min(row['TruncLeft'], self.__event_start)
-            if (row['TruncLeft'] > self.__event_end) or (pd.isnull(row['TruncLeft'])):
-                df_sess.loc[idx, 'TruncLeft'] = max(row['TruncJoined'], self.__event_end)
+            joined_at = row['JoinedAt']
+            left_at = row['LeftAt'] if pd.notnull(row['LeftAt']) else dt_infinity
 
-            if row['TruncLeft'] < self.__event_start:
-                df_sess.loc[idx, 'Validation'] = 'Left early'
-            if row['TruncJoined'] > self.__event_end:
-                df_sess.loc[idx, 'Validation'] = 'Joined late'
+            row['TruncJoined'] = max(joined_at, min(left_at, self.event_start))
+            row['TruncLeft'] = min(left_at, max(joined_at, self.event_end))
+        
+            if row['TruncLeft'] < self.event_start:
+                row['Validation'] = 'Left early'
+            elif row['TruncJoined'] > self.event_end:
+                row['Validation'] = 'Joined late'
+            else:
+                row['Validation'] = 'Valid'
+            
+            df_sess = df_sess.append(row)
                 
         if self.__local_tz not in ('UTC', 'GMT'):
             df_sess['LocalTruncJoined'] = df_sess['TruncJoined'].dt.tz_convert(self.__local_tz)
             df_sess['LocalTruncLeft'] = df_sess['TruncLeft'].dt.tz_convert(self.__local_tz)
-
+        
         idx_col_validation = np.where(df_sess.columns=='Validation')[0][0]
         ordered_cols = np.append(np.delete(df_sess.columns, idx_col_validation), 'Validation')        
         return df_sess[ordered_cols]
@@ -142,8 +154,8 @@ class TeamsAttendeeEngagementReportHandler:
         width = 50
         summary = {
             'start_end': {
-                'Informed event start': self.__event_start,
-                'Informed event end': self.__event_end
+                'Informed event start': self.event_start,
+                'Informed event end': self.event_end
             },
             'records': {
                 'Rows': str(self.data.shape[0])
