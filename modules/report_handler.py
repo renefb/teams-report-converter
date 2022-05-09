@@ -5,6 +5,7 @@ import pytz
 
 #TODO: docstrings
 #TODO: build package
+# TODO: refactor original row indexing
 class TeamsAttendeeEngagementReportHandler:
     
     def __init__(self, report_content, event_start, event_end, local_tz='UTC'):
@@ -31,8 +32,10 @@ class TeamsAttendeeEngagementReportHandler:
             'UTC Event Timestamp': 'UtcEventTimestamp'
         }
         df = df.rename(columns=columns_mapper)
+        # df.index += 1
+        # df.index.names = ['OriginalRow']
         df['UtcEventTimestamp'] = df['UtcEventTimestamp'].apply(lambda x: pytz.timezone('UTC').localize(x))
-        df = df.sort_values(by=['UtcEventTimestamp'])
+        # df = df.sort_values(by=['UtcEventTimestamp'])
         return df
         
         
