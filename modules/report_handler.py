@@ -5,7 +5,7 @@ import pytz
 
 #TODO: docstrings
 #TODO: build package
-# TODO: refactor original row indexing
+#TODO: refactor original row indexing
 class TeamsAttendeeEngagementReportHandler:
     
     def __init__(self, report_content, event_start, event_end, local_tz='UTC'):
@@ -96,10 +96,10 @@ class TeamsAttendeeEngagementReportHandler:
         
         freq = []
 
-        for id in participants_ids:
-            record = df_sess.loc[id]
+        for pid in participants_ids:
+            record = df_sess.loc[pid]
             if type(record)==pd.DataFrame:
-                record = self.__merge_sessions(df_sess.loc[id])
+                record = self.__merge_sessions(df_sess.loc[pid])
             record = record.drop(['TruncJoined', 'TruncLeft'])
             freq.append(record)
 
@@ -117,7 +117,7 @@ class TeamsAttendeeEngagementReportHandler:
         duration = record['Duration']
         duration_arr = []
 
-        for i, row in df.iloc[1:].iterrows():
+        for _, row in df.iloc[1:].iterrows():
             if row['TruncJoined'] < left:
                 if row['TruncLeft'] <= left:
                     pass
@@ -171,7 +171,7 @@ class TeamsAttendeeEngagementReportHandler:
 
         print('S U M M A R Y'.center(width))
         print('-'*width)        
-        for section_names, section_values in summary.items():
+        for _, section_values in summary.items():
             for k, v, in section_values.items():
                 len_k = len(k)
                 print(k, str(v).rjust(width - len_k - 1))
