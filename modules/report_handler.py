@@ -1,4 +1,3 @@
-import datetime
 import numpy as np
 import pandas as pd
 import pytz
@@ -19,9 +18,9 @@ class TeamsAttendeeEngagementReportHandler:
         self.__left_df = self.__filter_by_action('Left')
         self.sessions = self.__pair_sessions()
         self.frequency = self.__calculate_frequency()
-        
-        
-    
+      
+  
+
     def __load_csv(self):
         df = pd.read_csv(self.__report_content, parse_dates=['UTC Event Timestamp'])
         # keep 'UserAgent', 'Role' and 'Action' collumn names, rename others
@@ -30,7 +29,7 @@ class TeamsAttendeeEngagementReportHandler:
             'Participant Id': 'ParticipantId',
             'Full Name': 'FullName',
             'UTC Event Timestamp': 'UtcEventTimestamp'
-        } 
+        }
         df = df.rename(columns=columns_mapper)
         df['UtcEventTimestamp'] = df['UtcEventTimestamp'].apply(lambda x: pytz.timezone('UTC').localize(x))
         df = df.sort_values(by=['UtcEventTimestamp'])
@@ -200,4 +199,3 @@ class TeamsAttendeeEngagementReportHandler:
 
 
 
-    
