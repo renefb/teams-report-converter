@@ -127,7 +127,8 @@ class TeamsAttendeeEngagementReportHandler:
             freq.append(record)
 
         df_freq = pd.DataFrame(freq)
-        df_freq['DurationInMinutes'] = df_freq['Duration'].apply(lambda x: round(x.total_seconds()/60, 2))
+        df_freq['FrequencyInMinutes'] = df_freq['Duration'].apply(lambda x: round(x.total_seconds()/60, 2))
+        df_freq.drop(columns=['Duration'], inplace=True)
         df_freq = df_freq.sort_values(by=['FullName'])
         return df_freq
     
