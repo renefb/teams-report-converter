@@ -25,6 +25,9 @@ class TeamsAttendeeEngagementReportHandler:
         self.__left_df = self.__filter_by_action('Left')
         self.sessions = self.__pair_sessions()
         self.frequency = self.__calculate_frequency()
+
+        self.data = self.__remove_tzinfo(self.data)
+        self.sessions = self.__remove_tzinfo(self.sessions)
       
   
 
@@ -191,26 +194,30 @@ class TeamsAttendeeEngagementReportHandler:
         
     
         
-    def process_data(self, print_summary=True):
-        data = self.data.copy()
-        sess = self.sessions.copy()
-        freq = self.frequency.copy()
+    # def process_data(self, print_summary=True):
+    #     data = self.data.copy()
+    #     sess = self.sessions.copy()
+    #     freq = self.frequency.copy()
 
-        data.index = data.index + 1
+    #     data.index = data.index + 1
         
-        for df in [data, sess]:
-            dt_cols = df.select_dtypes(include=['datetime64[ns, UTC]']).columns
-            for col in dt_cols:
-                df[col] = df[col].apply(lambda x: x.replace(tzinfo=None))
+    #     for df in [data, sess]:
+    #         dt_cols = df.select_dtypes(include=['datetime64[ns, UTC]']).columns
+    #         for col in dt_cols:
+    #             df[col] = df[col].apply(lambda x: x.replace(tzinfo=None))
 
-        td_cols = freq.select_dtypes(include=['timedelta64[ns]'])
-        for col in td_cols:
-            freq[col] = freq[col].apply(lambda x: str(x))
+    #     td_cols = freq.select_dtypes(include=['timedelta64[ns]'])
+    #     for col in td_cols:
+    #         freq[col] = freq[col].apply(lambda x: str(x))
 
-        if print_summary:
-            self.__summary()
+    #     if print_summary:
+    #         self.__summary()
 
-        return data, sess, freq
+    #     return data, sess, freq
 
 
 
+    def __remove_tzinfo(self, df):
+        for col in df.select_dtypes(pd.core.dtypes.dtypes.DatetimeTZDtype).columns:
+            df[col] = df[col].apply(lambda x: x.replace(tzinfo=None))
+        return df
