@@ -3,6 +3,9 @@ import numpy as np
 import pandas as pd
 import pytz
 
+import warnings
+warnings.filterwarnings("ignore")
+
 
 #TODO: docstrings
 #TODO: build package
