@@ -63,11 +63,11 @@ class TeamsAttendeeEngagementReportHandler:
         paired_sess = pd.concat([self.__joined_df, self.__left_df['LeftAt']], axis=1)
         df_sess = pd.DataFrame()
         
-        dt_infinity = datetime(9999, 12, 31, 23, 59, 59)
+        dt_infinity = pd.to_datetime('2199-12-31 23:59:59')
         dt_infinity = pytz.timezone('UTC').localize(dt_infinity)
         # paired_sess['LeftAt'].fillna(dt_infinity, inplace=True)
 
-        for idx, row in paired_sess.iterrows():
+        for _, row in paired_sess.iterrows():
 
             joined_at = row['JoinedAt']
             left_at = row['LeftAt'] if pd.notnull(row['LeftAt']) else dt_infinity
