@@ -29,6 +29,9 @@ class TeamsAttendeeEngagementReportHandler:
         self.sessions = self.__pair_sessions()
         self.frequency = self.__calculate_frequency()
 
+        self.joined_df = self.__joined_df
+        self.left_df = self.__left_df
+
         self.data = self.__remove_tzinfo(self.data)
         self.sessions = self.__remove_tzinfo(self.sessions)
       
@@ -71,12 +74,12 @@ class TeamsAttendeeEngagementReportHandler:
         
         dt_infinity = pd.to_datetime('2199-12-31 23:59:59')
         dt_infinity = pytz.timezone('UTC').localize(dt_infinity)
-        # paired_sess['LeftAt'].fillna(dt_infinity, inplace=True)
+        paired_sess['LeftAt'].fillna(dt_infinity, inplace=True)
 
         for _, row in paired_sess.iterrows():
 
             joined_at = row['JoinedAt']
-            left_at = row['LeftAt'] if pd.notnull(row['LeftAt']) else dt_infinity
+            left_at = row['LeftAt'] #if pd.notnull(row['LeftAt']) else dt_infinity
 
             row['TruncJoined'] = max(joined_at, min(left_at, self.event_start))
             row['TruncLeft'] = min(left_at, max(joined_at, self.event_end))
@@ -89,6 +92,8 @@ class TeamsAttendeeEngagementReportHandler:
                 row['Validation'] = 'Valid'
             
             df_sess = df_sess.append(row)
+
+        # df_sess['LeftAt'] = df_sess['LeftAt'].apply(lambda x: pytz.timezone('UTC').localize(x))
                 
         if self.__local_tz not in ('UTC', 'GMT'):
             df_sess['LocalTruncJoined'] = df_sess['TruncJoined'].dt.tz_convert(self.__local_tz)
@@ -197,30 +202,7 @@ class TeamsAttendeeEngagementReportHandler:
         
     
         
-    # def process_data(self, print_summary=True):
-    #     data = self.data.copy()
-    #     sess = self.sessions.copy()
-    #     freq = self.frequency.copy()
-
-    #     data.index = data.index + 1
-        
-    #     for df in [data, sess]:
-    #         dt_cols = df.select_dtypes(include=['datetime64[ns, UTC]']).columns
-    #         for col in dt_cols:
-    #             df[col] = df[col].apply(lambda x: x.replace(tzinfo=None))
-
-    #     td_cols = freq.select_dtypes(include=['timedelta64[ns]'])
-    #     for col in td_cols:
-    #         freq[col] = freq[col].apply(lambda x: str(x))
-
-    #     if print_summary:
-    #         self.__summary()
-
-    #     return data, sess, freq
-
-
-
     def __remove_tzinfo(self, df):
-        for col in df.select_dtypes(pd.core.dtypes.dtypes.DatetimeTZDtype).columns:
+        for col in df.select_dtypes(include=['datetime64[ns, UTC]']).columns:
             df[col] = df[col].apply(lambda x: x.replace(tzinfo=None))
         return df
