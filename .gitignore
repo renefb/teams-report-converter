@@ -131,3 +131,6 @@ dmypy.json
 
 # mocked data
 mocks/
+
+# VSCode settings
+.vscode/
