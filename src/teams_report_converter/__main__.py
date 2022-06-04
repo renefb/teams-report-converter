@@ -5,15 +5,14 @@ import pandas as pd
 
 from .report_handler import TeamsAttendeeEngagementReportHandler
 
-   
 
-if __name__ == '__main__':
+def main():
     parser = argparse.ArgumentParser(description='Process MS Teams Attendee Engagement Reports.')
     parser.add_argument('-f', '--file', type=str, required=True, help='Path to the report file.')
     parser.add_argument('-s', '--start', type=str, required=True, help='Start datetime of the event in %%Y-%%m-%%d %%H:%%M format.')
     parser.add_argument('-e', '--end', type=str, required=True, help='End datetime of the event in %%Y-%%m-%%d %%H:%%M format.')
     parser.add_argument('-tz', '--timezone-name', type=str, default='UTC', help='Local timezone name of the events, like "America/Sao_Paulo" (default=UTC).\nFor more informations, see https://en.wikipedia.org/wiki/List_of_tz_database_time_zones#List')
-    parser.add_argument('-o', '--output', type=str, default='output.xlsx', help='Output file (default=output.xlsx).')
+    parser.add_argument('-o', '--output', type=str, default='BetterAttendanceReport.xlsx', help='Output file (default=output.xlsx).')
     args = parser.parse_args()
 
     # Get the report file path from the command line
@@ -26,7 +25,6 @@ if __name__ == '__main__':
     # # Get the output file path from the command line
     output_file_path = args.output
 
-    
     try:
         with open(report_file_path, 'r', encoding='utf8') as f:
             report_content = f.read()
@@ -42,5 +40,8 @@ if __name__ == '__main__':
     
     #TODO: specify exceptions
     except Exception as e:
-        print(e)
-    
+        print(str(e))
+  
+
+if __name__ == '__main__':
+    main()
