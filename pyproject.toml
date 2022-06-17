@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "teams-report-converter"
-version = "0.1.2"
+version = "0.2.0"
 description = "Convert meaningless MS Teams attendance text reports into calculated attendance spreadsheets"
 readme = "README.md"
 authors = [{name = "Renê Fernandes", email = "renefb@proton.me"}]

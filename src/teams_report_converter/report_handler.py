@@ -125,12 +125,12 @@ class TeamsAttendeeEngagementReportHandler:
 
         df_attend = pd.DataFrame(attend)
         df_attend['AttendanceInMinutes'] = df_attend['Duration'].apply(lambda x: round(x.total_seconds()/60, 2))
+        df_attend['AttendanceFormated'] = df_attend['AttendanceInMinutes'].apply(self.__format_minutes_interval)
         df_attend.drop(columns=['Duration'], inplace=True)
-        df_attend = df_attend.sort_values(by=['FullName'])
         df_attend = df_attend.reset_index().rename(columns={'index': 'ParticipantId'})
-        reordered_cols = ['FullName', 'ParticipantId', 'Role', 'AttendanceInMinutes']
+        reordered_cols = ['FullName', 'ParticipantId', 'Role', 'AttendanceInMinutes', 'AttendanceFormated']
         
-        return df_attend[reordered_cols]
+        return df_attend[reordered_cols].sort_values(by=['FullName'])
     
 
 
@@ -207,3 +207,16 @@ class TeamsAttendeeEngagementReportHandler:
         for col in df.select_dtypes(include=['datetime64[ns, UTC]']).columns:
             df[col] = df[col].apply(lambda x: x.replace(tzinfo=None))
         return df
+
+
+
+    def __format_minutes_interval(self, minutes_interval):
+        minutes_interval = float(minutes_interval)
+        hours = minutes_interval // 60
+        fmt_hours = '%03d'%hours
+        minutes = minutes_interval - (60*hours)
+        fmt_minutes = '%02d'%minutes
+        remainder = minutes - (minutes//1)
+        seconds = remainder * 60
+        fmt_seconds = '%02d'%seconds
+        return f'{fmt_hours}h{fmt_minutes}min{fmt_seconds}s'
