@@ -16,18 +16,18 @@ class TeamsAttendeeEngagementReportHandler:
     def __init__(self, report_content, event_start, event_end, local_tz='UTC'):
         self.__report_content = report_content
         self.__local_tz = local_tz
-        # self.event_start = pd.Timestamp(event_start, tz=self.__local_tz).astimezone(pytz.timezone('UTC'))
+        # self.__event_start = pd.Timestamp(event_start, tz=self.__local_tz).astimezone(pytz.timezone('UTC'))
         _event_start = datetime.strptime(event_start, '%Y-%m-%d %H:%M:%S')
-        self.event_start = pytz.timezone(self.__local_tz).localize(_event_start).astimezone(pytz.timezone('UTC'))
-        # self.event_end = pd.Timestamp(event_end, tz=self.__local_tz).astimezone(pytz.timezone('UTC'))
+        self.__event_start = pytz.timezone(self.__local_tz).localize(_event_start).astimezone(pytz.timezone('UTC'))
+        # self.__event_end = pd.Timestamp(event_end, tz=self.__local_tz).astimezone(pytz.timezone('UTC'))
         _event_end = datetime.strptime(event_end, '%Y-%m-%d %H:%M:%S')
-        self.event_end = pytz.timezone(self.__local_tz).localize(_event_end).astimezone(pytz.timezone('UTC'))
+        self.__event_end = pytz.timezone(self.__local_tz).localize(_event_end).astimezone(pytz.timezone('UTC'))
                 
         self.data = self.__load_csv()
         self.__joined_df = self.__filter_by_action('Joined')
         self.__left_df = self.__filter_by_action('Left')
         self.sessions = self.__pair_sessions()
-        self.frequency = self.__calculate_frequency()
+        self.attendance = self.__calculate_attendance()
 
         self.joined_df = self.__joined_df
         self.left_df = self.__left_df
@@ -56,48 +56,47 @@ class TeamsAttendeeEngagementReportHandler:
         
     
     def __filter_by_action(self, action):
-        action_col = f'{action}At'
         keep_param = 'first' if action=="Joined" else 'last'
         
-        df_action = self.data.query('Action==@action').rename(columns={'UtcEventTimestamp': action_col})
+        df_action = self.data.query('Action==@action').rename(columns={'UtcEventTimestamp': action})
         df_action = df_action.drop_duplicates(subset='SessionId', keep=keep_param)
         df_action = df_action.drop(columns='Action').set_index('SessionId')
 
-        ordered_cols = ['ParticipantId', 'FullName', 'Role', 'UserAgent', action_col]        
+        ordered_cols = ['ParticipantId', 'FullName', 'Role', 'UserAgent', action]        
         return df_action[ordered_cols]
  
     
 
     def __pair_sessions(self):
-        paired_sess = pd.concat([self.__joined_df, self.__left_df['LeftAt']], axis=1)
+        paired_sess = pd.concat([self.__joined_df, self.__left_df['Left']], axis=1)
         df_sess = pd.DataFrame()
         
         dt_infinity = pd.to_datetime('2199-12-31 23:59:59')
         dt_infinity = pytz.timezone('UTC').localize(dt_infinity)
-        paired_sess['LeftAt'].fillna(dt_infinity, inplace=True)
+        paired_sess['Left'].fillna(dt_infinity, inplace=True)
 
         for _, row in paired_sess.iterrows():
 
-            joined_at = row['JoinedAt']
-            left_at = row['LeftAt'] #if pd.notnull(row['LeftAt']) else dt_infinity
+            joined_at = row['Joined']
+            left_at = row['Left'] #if pd.notnull(row['Left']) else dt_infinity
 
-            row['TruncJoined'] = max(joined_at, min(left_at, self.event_start))
-            row['TruncLeft'] = min(left_at, max(joined_at, self.event_end))
+            row['TruncJoined'] = max(joined_at, min(left_at, self.__event_start))
+            row['TruncLeft'] = min(left_at, max(joined_at, self.__event_end))
         
-            if row['TruncLeft'] < self.event_start:
+            if row['TruncLeft'] < self.__event_start:
                 row['Validation'] = 'Left early'
-            elif row['TruncJoined'] > self.event_end:
+            elif row['TruncJoined'] > self.__event_end:
                 row['Validation'] = 'Joined late'
             else:
                 row['Validation'] = 'Valid'
             
             df_sess = df_sess.append(row)
 
-        # df_sess['LeftAt'] = df_sess['LeftAt'].apply(lambda x: pytz.timezone('UTC').localize(x))
+        # df_sess['Left'] = df_sess['Left'].apply(lambda x: pytz.timezone('UTC').localize(x))
                 
         if self.__local_tz not in ('UTC', 'GMT'):
-            df_sess['LocalTruncJoined'] = df_sess['TruncJoined'].dt.tz_convert(self.__local_tz)
-            df_sess['LocalTruncLeft'] = df_sess['TruncLeft'].dt.tz_convert(self.__local_tz)
+            df_sess['TzTruncJoined'] = df_sess['TruncJoined'].dt.tz_convert(self.__local_tz)
+            df_sess['TzTruncLeft'] = df_sess['TruncLeft'].dt.tz_convert(self.__local_tz)
         
         idx_col_validation = np.where(df_sess.columns=='Validation')[0][0]
         ordered_cols = np.append(np.delete(df_sess.columns, idx_col_validation), 'Validation')   
@@ -106,7 +105,7 @@ class TeamsAttendeeEngagementReportHandler:
 
 
 
-    def __calculate_frequency(self):
+    def __calculate_attendance(self):
         df_sess = self.sessions.copy()
         df_sess = df_sess[~df_sess['ParticipantId'].isnull()]
 
@@ -118,20 +117,23 @@ class TeamsAttendeeEngagementReportHandler:
         df_sess = df_sess[target_columns]
         df_sess['Duration'] = df_sess['TruncLeft'] - df_sess['TruncJoined']
         
-        freq = []
+        attend = []
 
         for pid in participants_ids:
             record = df_sess.loc[pid]
             if type(record)==pd.DataFrame:
                 record = self.__merge_sessions(df_sess.loc[pid])
             record = record.drop(['TruncJoined', 'TruncLeft'])
-            freq.append(record)
+            attend.append(record)
 
-        df_freq = pd.DataFrame(freq)
-        df_freq['FrequencyInMinutes'] = df_freq['Duration'].apply(lambda x: round(x.total_seconds()/60, 2))
-        df_freq.drop(columns=['Duration'], inplace=True)
-        df_freq = df_freq.sort_values(by=['FullName'])
-        return df_freq.reset_index().rename(columns={'index': 'ParticipantId'})
+        df_attend = pd.DataFrame(attend)
+        df_attend['AttendanceInMinutes'] = df_attend['Duration'].apply(lambda x: round(x.total_seconds()/60, 2))
+        df_attend.drop(columns=['Duration'], inplace=True)
+        df_attend = df_attend.sort_values(by=['FullName'])
+        df_attend = df_attend.reset_index().rename(columns={'index': 'ParticipantId'})
+        reordered_cols = ['FullName', 'ParticipantId', 'Role', 'AttendanceInMinutes']
+        
+        return df_attend[reordered_cols]
     
 
 
@@ -167,21 +169,21 @@ class TeamsAttendeeEngagementReportHandler:
         width = 50
         summary = {
             'start_end': {
-                'Informed event start': self.event_start,
-                'Informed event end': self.event_end
+                'Informed event start': self.__event_start,
+                'Informed event end': self.__event_end
             },
             'records': {
                 'Rows': str(self.data.shape[0])
             },
             'join': {
                 'Joined rows': self.__joined_df.shape[0],
-                ' - First at': self.__joined_df['JoinedAt'].min(),
-                ' - Last at': self.__joined_df['JoinedAt'].max(),
+                ' - First at': self.__joined_df['Joined'].min(),
+                ' - Last at': self.__joined_df['Joined'].max(),
             },
             'left': {
                 'Left rows': self.__left_df.shape[0],
-                ' - First at': self.__left_df['LeftAt'].min(),
-                ' - Last at': self.__left_df['LeftAt'].max()
+                ' - First at': self.__left_df['Left'].min(),
+                ' - Last at': self.__left_df['Left'].max()
             },
             'sessions': {
                 'Unique sessions': len(self.data['SessionId'].unique()),
