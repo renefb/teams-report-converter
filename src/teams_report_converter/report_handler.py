@@ -8,7 +8,6 @@ warnings.filterwarnings("ignore")
 
 
 #TODO: docstrings
-#TODO: build package
 #TODO: refactor original row indexing
 #TODO: treat warnings in a better way
 class TeamsAttendeeEngagementReportHandler:
@@ -16,10 +15,8 @@ class TeamsAttendeeEngagementReportHandler:
     def __init__(self, report_content, event_start, event_end, local_tz='UTC'):
         self.__report_content = report_content
         self.__local_tz = local_tz
-        # self.__event_start = pd.Timestamp(event_start, tz=self.__local_tz).astimezone(pytz.timezone('UTC'))
         _event_start = datetime.strptime(event_start, '%Y-%m-%d %H:%M:%S')
         self.__event_start = pytz.timezone(self.__local_tz).localize(_event_start).astimezone(pytz.timezone('UTC'))
-        # self.__event_end = pd.Timestamp(event_end, tz=self.__local_tz).astimezone(pytz.timezone('UTC'))
         _event_end = datetime.strptime(event_end, '%Y-%m-%d %H:%M:%S')
         self.__event_end = pytz.timezone(self.__local_tz).localize(_event_end).astimezone(pytz.timezone('UTC'))
                 
@@ -50,7 +47,7 @@ class TeamsAttendeeEngagementReportHandler:
         # df.index += 1
         # df.index.names = ['OriginalRow']
         df['UtcEventTimestamp'] = df['UtcEventTimestamp'].apply(lambda x: pytz.timezone('UTC').localize(x))
-        # df = df.sort_values(by=['UtcEventTimestamp'])
+        
         return df
         
         
