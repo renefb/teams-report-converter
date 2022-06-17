@@ -100,8 +100,9 @@ class TeamsAttendeeEngagementReportHandler:
             df_sess['LocalTruncLeft'] = df_sess['TruncLeft'].dt.tz_convert(self.__local_tz)
         
         idx_col_validation = np.where(df_sess.columns=='Validation')[0][0]
-        ordered_cols = np.append(np.delete(df_sess.columns, idx_col_validation), 'Validation')        
-        return df_sess[ordered_cols]
+        ordered_cols = np.append(np.delete(df_sess.columns, idx_col_validation), 'Validation')   
+
+        return df_sess[ordered_cols].reset_index().rename(columns={'index': 'SessionId'})
 
 
 
@@ -130,7 +131,7 @@ class TeamsAttendeeEngagementReportHandler:
         df_freq['FrequencyInMinutes'] = df_freq['Duration'].apply(lambda x: round(x.total_seconds()/60, 2))
         df_freq.drop(columns=['Duration'], inplace=True)
         df_freq = df_freq.sort_values(by=['FullName'])
-        return df_freq
+        return df_freq.reset_index().rename(columns={'index': 'ParticipantId'})
     
 
 
