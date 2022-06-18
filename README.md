@@ -1,3 +1,5 @@
+[![Upload Python Package](https://github.com/renefb/teams-report-converter/actions/workflows/python-publish.yml/badge.svg)](https://github.com/renefb/teams-report-converter/actions/workflows/python-publish.yml)
+
 # Teams Attendance Report Converter
 
 This tool is a simple script that converts basic attendance reports generated from MS Teams events into calculated attendance spreadsheets.
