@@ -46,7 +46,7 @@ push = true
 "pyproject.toml" = [
     'current_version = "{version}"',
 ]
-"src/teams_report_converter/__init__.py" = [
+"src\\teams_report_converter\\__init__.py" = [
     '__version__ = "{version}"',
 ]
 
