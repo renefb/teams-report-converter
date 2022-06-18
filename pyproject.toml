@@ -43,12 +43,12 @@ tag = true
 push = true
 
 [tool.bumpver.file_patterns]
-pyproject.toml = [
+"pyproject.toml" = [
     'current_version = "{version}"',
 ]
 src
     teams_report_converter
-        __init__.py" = [
+    __init__.py" = [
     '__version__ = "{version}"',
 ]
 
