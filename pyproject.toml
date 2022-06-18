@@ -46,6 +46,3 @@ push = true
 "pyproject.toml" = [
     'current_version = "{version}"',
 ]
-"__init__.py" = [
-    '__version__ = "{version}"'
-]
