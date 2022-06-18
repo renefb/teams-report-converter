@@ -35,7 +35,7 @@ Homepage = "https://github.com/renefb/teams-report-converter"
 convert-teams-report = "teams_report_converter.__main__:main"
 
 [tool.bumpver]
-current_version = "0.2.0"
+current_version = "0.2.1"
 version_pattern = "MAJOR.MINOR.PATCH"
 commit_message = "bump version {old_version} -> {new_version}"
 commit = true
@@ -46,7 +46,7 @@ push = true
 "pyproject.toml" = [
     'current_version = "{version}"',
 ]
-"src\\teams_report_converter\\__init__.py" = [
+"src.teams_report_converter.__init__.py" = [
     '__version__ = "{version}"',
 ]
 
