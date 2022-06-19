@@ -1,6 +1,23 @@
 # Teams Attendance Report Converter
 
-This tool is a simple script that converts basic attendance reports generated from MS Teams events into calculated attendance spreadsheets.
+This tool is a simple script that generates calculated attendance spreadsheets from text attendance reports generated from MS Teams events.
+
+It converts this:
+```csv
+SessionId,ParticipantId,FullName,UserAgent,UtcEventTimestamp,Action,Role
+518ca2fd-...,johndoe@test.net,John Doe,Mozila/5.0...,1/25/2022 4:48:08 PM,Joined,Attendee
+39f73ed2-...,mbrigs@corp.co,Mark Brigs,SignalR...,1/25/2022 4:51:13 PM,Joined,Attendee
+518ca2fd-...,johndoe@test.net,John Doe,Mozila/5.0...,1/25/2022 5:25:54 PM,Left,Attendee
+```
+Into this:
+| ParticipantId    | FullName   | Role     | AttendanceInMinutes | AttendanceFormatted |
+|------------------|------------|----------|---------------------|---------------------|
+| johndoe@test.net | John Doe   | Attendee | 37.1                | 000h37min04s        |
+| mbrigs@corp.co   | Mark Brigs | Attendee | 65.6                | 001h05min36s        |
+
+
+You can check a [live demo here](https://colab.research.google.com/drive/19sXnxrHpzvuXVnw9m61MBbmrOQX-I2J1?usp=sharing#scrollTo=JaS8TQF9Fuu7).
+
 
 ## Instalation
 
@@ -10,9 +27,11 @@ You can install this converter from [PyPI](https://pypi.org/project/teams-report
 pip install teams-report-converter
 ```
 
+
 ## How to use
 
 This converter can be used as a command line application as well as a package imported by your own python application.
+
 
 ### Using as command line application:
 
@@ -27,6 +46,7 @@ In this scenario the converter uses the following parameters:
 - `-tz`: timezone of event start and event end (for reference use [TZ database name](https://en.wikipedia.org/wiki/List_of_tz_database_time_zones#List))
 
 Note that this is the unique scenario that outputs a ready to use resulting spreadsheet.
+
 
 ### Using as package imported by your python application
 
@@ -47,14 +67,14 @@ From this point, you can call `converter.data` for accessing the original data. 
 
 The below table shows how the timestamps from original data are processed in different scenarios:
 
-| Join Timestamp     | Left Timestamp                    | Truncated Joined      | Truncated Left        | Attendance Calculation              |
-|:------------------:|:---------------------------------:|:---------------------:|:---------------------:|:-----------------------------------:|
-| before event start | no record                         | set to event start    | set to event end      | [event end] - [event start]         |
-| before event start | before event start                | set to left timestamp | left timestamp        | [set to zero]                       |
-| before event start | between event start and event end | set to event start    | left timestamp        | [left timestamp] - [event start]    |
-| before event start | after event end                   | set to event start    | set to event end      | [event end] - [event start]         |
-| after event start  | no record                         | join timestamp        | set to event end      | [event end] - [join timestamp]      |
-| after event start  | before event end                  | join timestamp        | left timestamp        | [left timestamp] - [join timestamp] |
-| after event start  | after event end                   | join timestamp        | set to event end      | [event end] - [join timestamp]      |
-| after event end    | no record                         | join timestamp        | set to join timestamp | [set to zero]                       |
-| after event end    | after event end                   | join timestamp        | set to join timestamp | [set to zero]                       |
+| Joined Timestamp   | Left Timestamp                    | Truncated Joined      | Truncated Left        | Attendance Calculation                |
+|:------------------:|:---------------------------------:|:---------------------:|:-----------------------:|:-------------------------------------:|
+| before event start | no record                         | set to event start    | set to event end        | [event end] - [event start]           |
+| before event start | before event start                | set to left timestamp | left timestamp          | [set to zero]                         |
+| before event start | between event start and event end | set to event start    | left timestamp          | [left timestamp] - [event start]      |
+| before event start | after event end                   | set to event start    | set to event end        | [event end] - [event start]           |
+| after event start  | no record                         | joined timestamp      | set to event end        | [event end] - [joined timestamp]      |
+| after event start  | before event end                  | joined timestamp      | left timestamp          | [left timestamp] - [joined timestamp] |
+| after event start  | after event end                   | joined timestamp      | set to event end        | [event end] - [joined timestamp]      |
+| after event end    | no record                         | joined timestamp      | set to joined timestamp | [set to zero]                         |
+| after event end    | after event end                   | joined timestamp      | set to joined timestamp | [set to zero]                         |
