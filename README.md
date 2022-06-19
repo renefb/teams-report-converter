@@ -1,5 +1,3 @@
-[![Upload Python Package](https://github.com/renefb/teams-report-converter/actions/workflows/python-publish.yml/badge.svg)](https://github.com/renefb/teams-report-converter/actions/workflows/python-publish.yml)
-
 # Teams Attendance Report Converter
 
 This tool is a simple script that converts basic attendance reports generated from MS Teams events into calculated attendance spreadsheets.
@@ -42,4 +40,21 @@ converter = Converter(report_content='AttendeeReport.csv',
                       event_end='2021-11-03 17:00:00', 
                       local_tz='America/Sao_Paulo')
 ```
-From this point, you can call `converter.data` for accessing the original data. Calling `converter.sessions` outputs another dataframe listing all joins and lefts paired by sessions and `converter.frequency` outputs the dataframe that contains the total of valid minutes accumulated by each participant. 
+From this point, you can call `converter.data` for accessing the original data. Calling `converter.sessions` outputs another dataframe listing all joins and lefts paired by sessions and `converter.attendance` outputs the dataframe that contains the total of valid minutes accumulated by each participant.
+
+
+## How the tool calculates attendance
+
+The below table shows how the timestamps from original data are processed in different scenarios:
+
+| Join Timestamp     | Left Timestamp                    | Truncated Joined      | Truncated Left        | Attendance Calculation              |
+|:------------------:|:---------------------------------:|:---------------------:|:---------------------:|:-----------------------------------:|
+| before event start | no record                         | set to event start    | set to event end      | [event end] - [event start]         |
+| before event start | before event start                | set to left timestamp | left timestamp        | [set to zero]                       |
+| before event start | between event start and event end | set to event start    | left timestamp        | [left timestamp] - [event start]    |
+| before event start | after event end                   | set to event start    | set to event end      | [event end] - [event start]         |
+| after event start  | no record                         | join timestamp        | set to event end      | [event end] - [join timestamp]      |
+| after event start  | before event end                  | join timestamp        | left timestamp        | [left timestamp] - [join timestamp] |
+| after event start  | after event end                   | join timestamp        | set to event end      | [event end] - [join timestamp]      |
+| after event end    | no record                         | join timestamp        | set to join timestamp | [set to zero]                       |
+| after event end    | after event end                   | join timestamp        | set to join timestamp | [set to zero]                       |
