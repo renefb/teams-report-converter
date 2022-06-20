@@ -6,7 +6,7 @@
         <img width="30" src="https://flagpedia.net/data/flags/h80/br.webp">
     </a>
     &nbsp;
-    <a href="/">
+    <a href="https://github.com/renefb/teams-report-converter">
         <img width="30" height="20" src="https://flagpedia.net/data/flags/h80/us.webp">
     </a>
 </div>
