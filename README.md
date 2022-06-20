@@ -28,7 +28,7 @@ Into this:
 | mbrigs@corp.co   | Mark Brigs | Attendee | 65.6                | 001h05min36s        |
 
 
-You can check a [live demo here](https://colab.research.google.com/drive/19sXnxrHpzvuXVnw9m61MBbmrOQX-I2J1?usp=sharing#scrollTo=JaS8TQF9Fuu7).
+You can check a [live demo here](https://colab.research.google.com/drive/19sXnxrHpzvuXVnw9m61MBbmrOQX-I2J1?usp=sharing).
 
 
 ## Instalation

@@ -28,7 +28,7 @@ Você terá isto:
 | mbrigs@corp.co   | Mark Brigs | Attendee | 65.6                | 001h05min36s        |
 
 
-Você pode conferir a [demo aqui](https://colab.research.google.com/drive/19sXnxrHpzvuXVnw9m61MBbmrOQX-I2J1?usp=sharing#scrollTo=JaS8TQF9Fuu7).
+Você pode conferir a [demo aqui](https://colab.research.google.com/drive/1c1Swbp5PXZu8bf6t1K1ksbqYVr4utzOl?usp=sharing).
 
 
 ## Instalação
