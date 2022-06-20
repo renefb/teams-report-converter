@@ -52,8 +52,8 @@ convert-teams-report -f <caminho-para-csv-original> -s <data-hora-de-início-do-
 ```
 Neste cenário, o conversor utiliza os seguintes parâmetros:
 - `-f`: caminho do dispositivo onde se encontra o relatório gerado pelo MS Teams, por exemplo: "C:\Downloads\AttendeeReport.csv"
-- `-s`: data e hora do início do evento no formato "%AAAA-%MM-%DD %hh:%mm:%ss" (envolvidos em aspas duplas)
-- `-e`: data e hora do fim do evento no formato "%AAAA-%MM-%DD %hh:%mm:%ss" (envolvidos em aspas duplas)
+- `-s`: data e hora do início do evento no formato "AAAA-MM-DD hh:mm:ss" (envolvidos em aspas duplas)
+- `-e`: data e hora do fim do evento no formato "AAAA-MM-DD hh:mm:ss" (envolvidos em aspas duplas)
 - `-o`: caminho do dispositivo onde você deseja salvar a planilha resultante, por exemplo "C:\Relatorios\frequencia.xlsx" ou, simplesmente, "C:\Relatorios" (neste último caso, por padrão, a planilha será nomeada como "output.xlsx")
 - `-tz`: fuso horário utilizado na indicação da data e hora de início e fim do evento (para o fuso horário de Brasília, você pode usar o valor "America/Sao_Paulo"; demais casos, verifique [aqui](https://en.wikipedia.org/wiki/List_of_tz_database_time_zones#List) a lista completa de valores possíveis)
 
